@@ -1,0 +1,16 @@
+# Core ML
+torch>=2.2
+numpy>=1.26
+scipy>=1.12
+
+# Data
+datasets>=2.18          # HuggingFace datasets (Chordonomicon download)
+pyyaml>=6.0
+
+# Melody parsing
+music21>=9.1            # MusicXML parsing
+mido>=1.3               # MIDI parsing
+pretty_midi>=0.2.10     # MIDI utilities
+
+# Notebooks
+jupyter>=1.0

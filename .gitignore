@@ -1,0 +1,24 @@
+# Data — too large for git
+data/
+
+# Model checkpoints
+checkpoints/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Conda / venv
+.conda/
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
