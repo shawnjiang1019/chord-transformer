@@ -1,10 +1,6 @@
 """
 Casual self attention written from scratch.
-
-
 We specify multiple heads for multi headed attention.
-
-
 """
 
 
@@ -14,7 +10,7 @@ import torch.nn.functional as F
 
 
 
-class CasualSelfAttention(nn.Module):
+class CausalSelfAttention(nn.Module):
     def __init__(self, d_model: int, n_heads: int, dropout: float = 0.1):
         
         '''d_model: length of each token embedding vector (256 for now)'''

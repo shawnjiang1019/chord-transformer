@@ -14,6 +14,7 @@ sequence before the BOS token and handled by the same embedding table.
 
 import torch
 import torch.nn as nn
+from src.model.TransformerBlock import TransformerBlock
 
 
 class ChordTransformer(nn.Module):
@@ -27,19 +28,15 @@ class ChordTransformer(nn.Module):
         dropout: float = 0.1,
     ):
         super().__init__()
-        self.token_emb = nn.Embedding(vocab_size, d_model)
+        self.tok_emb = nn.Embedding(vocab_size, d_model)
         self.pos_emb = nn.Embedding(max_seq_len, d_model)
+        self.blocks = nn.ModuleList([
+            TransformerBlock(d_model, n_heads, dropout) for _ in range(n_layers)
+        ])
+        self.ln_f = nn.LayerNorm(d_model)
+        self.head = nn.Linear(d_model, vocab_size, bias=False)
 
-        decoder_layer = nn.TransformerDecoderLayer(
-            d_model=d_model,
-            nhead=n_heads,
-            dim_feedforward=d_model * 4,
-            dropout=dropout,
-            batch_first=True,
-        )
-        self.transformer = nn.TransformerDecoder(decoder_layer, num_layers=n_layers)
-        self.lm_head = nn.Linear(d_model, vocab_size, bias=False)
-        self.d_model = d_model
+        
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         """
@@ -48,22 +45,48 @@ class ChordTransformer(nn.Module):
         Returns:
             logits: (batch, seq_len, vocab_size)
         """
-        B, T = input_ids.shape
-        positions = torch.arange(T, device=input_ids.device).unsqueeze(0)
-        x = self.token_emb(input_ids) + self.pos_emb(positions)
+        B, T = input_ids.size()
+        pos = torch.arange(T, device=input_ids.device)
 
-        causal_mask = nn.Transformer.generate_square_subsequent_mask(T, device=input_ids.device)
-        x = self.transformer(x, x, tgt_mask=causal_mask)
-        return self.lm_head(x)
+        # now each token has its embedding info, position info
+        x = self.tok_emb(input_ids) + self.pos_emb(pos)
+        for block in self.blocks:
+            x = block(x)
+        # after each block it gets info about previous tokens and processed understanding
+        x = self.ln_f(x)
+        # compute the dot product of each ID against each token
+        logits = self.head(x) 
+        return logits
+        
 
     @torch.no_grad()
-    def generate(
-        self,
-        prompt_ids: torch.Tensor,
-        max_new_tokens: int = 64,
-        temperature: float = 1.0,
-        top_k: int = 50,
-        eos_id: int = 2,
-    ) -> torch.Tensor:
-        """Autoregressive generation with temperature + top-K sampling."""
-        raise NotImplementedError
+    def generate(self, prompt_ids, max_new_tokens=64, temperature=1.0, top_k=50, eos_id=2):
+        ids = prompt_ids
+
+        for _ in range(max_new_tokens):
+            # Crop to max_seq_len if needed
+            ids_cond = ids[:, -self.pos_emb.num_embeddings:]
+
+            # Forward pass, get logits for last position only
+            logits = self(ids_cond)[:, -1, :]
+
+            # Apply temperature (higher = more random)
+            logits = logits / temperature
+
+            # Top-k: zero out everything except top k scores
+            if top_k > 0:
+                v, _ = torch.topk(logits, top_k)
+                logits[logits < v[:, -1:]] = float('-inf')
+
+            # Sample from the distribution
+            probs = torch.softmax(logits, dim=-1)
+            next_id = torch.multinomial(probs, num_samples=1)
+
+            # Append and continue
+            ids = torch.cat([ids, next_id], dim=1)
+
+            # Stop if EOS
+            if next_id.item() == eos_id:
+                break
+
+        return ids
