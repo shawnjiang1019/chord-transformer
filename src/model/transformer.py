@@ -60,7 +60,7 @@ class ChordTransformer(nn.Module):
         
 
     @torch.no_grad()
-    def generate(self, prompt_ids, max_new_tokens=64, temperature=1.0, top_k=50, eos_id=2):
+    def generate(self, prompt_ids, max_new_tokens=64, temperature=1.0, top_k=50, eos_id=2, repetition_penalty=1.2):
         ids = prompt_ids
 
         for _ in range(max_new_tokens):
@@ -69,6 +69,14 @@ class ChordTransformer(nn.Module):
 
             # Forward pass, get logits for last position only
             logits = self(ids_cond)[:, -1, :]
+
+            # Repetition penalty: reduce scores of tokens already in the sequence
+            if repetition_penalty != 1.0:
+                for token_id in ids[0].unique():
+                    if logits[0, token_id] > 0:
+                        logits[0, token_id] /= repetition_penalty
+                    else:
+                        logits[0, token_id] *= repetition_penalty
 
             # Apply temperature (higher = more random)
             logits = logits / temperature

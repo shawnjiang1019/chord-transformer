@@ -59,9 +59,11 @@ class CausalSelfAttention(nn.Module):
         scores = q @ k.transpose(-2, -1) / (self.head_dim ** 0.5)
         # Apply the casual mask for autoregressive generation
 
-        # create an upper triangular matrix of 1s excluding the main diagonal
-        mask = torch.triu(torch.ones(T, T, device=x.device), diagonal=1).bool()
-        
+        # causal mask: cache and slice to avoid recreating every forward pass
+        if not hasattr(self, '_mask') or self._mask.size(0) < T:
+            self._mask = torch.triu(torch.ones(T, T, device=x.device), diagonal=1).bool()
+        mask = self._mask[:T, :T]
+
         # apply the mask to the scores and replace masked entries with -inf
         scores = scores.masked_fill(mask, float('-inf'))
 

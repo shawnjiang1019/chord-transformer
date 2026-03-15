@@ -9,6 +9,7 @@ Metrics   : validation perplexity, next-chord accuracy, note-level accuracy
 import os
 import torch
 import torch.nn as nn
+from torch.amp import autocast, GradScaler
 from torch.utils.data import DataLoader
 
 from src.model.transformer import ChordTransformer
@@ -35,6 +36,8 @@ def train(
     model = model.to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss(ignore_index=0)
+    scaler = GradScaler('cuda')
+    use_amp = device == "cuda"
 
     os.makedirs(checkpoint_dir, exist_ok=True)
     global_step = 0
@@ -54,13 +57,16 @@ def train(
             input_ids = batch["input_ids"].to(device)
             labels = batch["labels"].to(device)
 
-            logits = model(input_ids)
-            loss = criterion(logits.view(-1, logits.size(-1)), labels.view(-1))
+            with autocast('cuda', enabled=use_amp):
+                logits = model(input_ids)
+                loss = criterion(logits.view(-1, logits.size(-1)), labels.view(-1))
 
             optimizer.zero_grad()
-            loss.backward()
+            scaler.scale(loss).backward()
+            scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
-            optimizer.step()
+            scaler.step(optimizer)
+            scaler.update()
 
             total_train_loss += loss.item()
             n_train += 1
