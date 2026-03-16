@@ -6,6 +6,7 @@ Optimizer : AdamW, lr ~1e-4 with linear warmup
 Metrics   : validation perplexity, next-chord accuracy, note-level accuracy
 """
 
+import math
 import os
 import torch
 import torch.nn as nn
@@ -32,6 +33,7 @@ def train(
     max_grad_norm: float = 1.0,
     device: str = "cuda",
     checkpoint_dir: str = "checkpoints",
+    root_ids: set = None,
 ):
     model = model.to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
@@ -75,12 +77,18 @@ def train(
         avg_train_loss = total_train_loss / n_train
         val_loss = evaluate(model, val_loader, criterion, device)
 
+        root_str = ""
+        if root_ids is not None:
+            root_loss, root_ppl = evaluate_root_only(model, val_loader, root_ids, device)
+            root_str = f"  root_loss={root_loss:.4f}  root_ppl={root_ppl:.2f}"
+
         print(
             f"Epoch {epoch+1}/{epochs}  "
             f"train_loss={avg_train_loss:.4f}  "
             f"val_loss={val_loss:.4f}  "
             f"ppl={val_loss.exp():.2f}  "
             f"lr={current_lr:.6f}"
+            f"{root_str}"
         )
 
         # Save checkpoint if validation loss improved
@@ -119,3 +127,32 @@ def evaluate(model, loader, criterion, device) -> torch.Tensor:
             total_loss += loss.item()
             n += 1
     return torch.tensor(total_loss / n)
+
+
+def evaluate_root_only(model, loader, root_ids: set, device) -> tuple[float, float]:
+    """Evaluate loss/perplexity only at root token positions."""
+    model.eval()
+    criterion = nn.CrossEntropyLoss(reduction='none')
+    total_loss, n = 0.0, 0
+
+    root_ids_tensor = torch.tensor(sorted(root_ids), device=device)
+
+    with torch.no_grad():
+        for batch in loader:
+            input_ids = batch["input_ids"].to(device)
+            labels = batch["labels"].to(device)
+            logits = model(input_ids)
+
+            loss = criterion(logits.view(-1, logits.size(-1)), labels.view(-1))
+            flat_labels = labels.view(-1)
+
+            # Mask: only positions where the label is a root token
+            root_mask = (flat_labels.unsqueeze(1) == root_ids_tensor).any(dim=1)
+
+            if root_mask.any():
+                total_loss += loss[root_mask].sum().item()
+                n += root_mask.sum().item()
+
+    avg_loss = total_loss / n
+    ppl = math.exp(avg_loss)
+    return avg_loss, ppl
