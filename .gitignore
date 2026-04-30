@@ -1,4 +1,8 @@
+# MD for Cohere
+cohere.md
+
 # Data — too large for git
+data/Wikifonia/
 
 # Model checkpoints
 checkpoints/

@@ -80,6 +80,6 @@ def main(checkpoint_path: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--checkpoint", default="checkpoints/new_model.pt")
+    parser.add_argument("--checkpoint", default="checkpoints/best_model_4.pt")
     args = parser.parse_args()
     main(args.checkpoint)
