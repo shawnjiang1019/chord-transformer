@@ -4,4 +4,4 @@ from src.data.lakh.processing import (
     build_chord_templates,
     MidiExtractionResult,
 )
-from src.data.lakh.dataset import MelodyChordDataset
+from src.data.melody_chord_dataset import MelodyChordDataset

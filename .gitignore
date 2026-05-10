@@ -3,6 +3,8 @@ cohere.md
 
 # Data — too large for git
 data/Wikifonia/
+data/processed/
+data/raw/
 
 # Model checkpoints
 checkpoints/
