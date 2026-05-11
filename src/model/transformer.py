@@ -14,7 +14,7 @@ sequence before the BOS token and handled by the same embedding table.
 
 import torch
 import torch.nn as nn
-from src.model.TransformerBlock import TransformerBlock
+from src.model.blocks.TransformerBlock import TransformerBlock
 
 
 class ChordTransformer(nn.Module):
@@ -26,22 +26,30 @@ class ChordTransformer(nn.Module):
         n_layers: int = 4,
         max_seq_len: int = 512,
         dropout: float = 0.1,
+        cross_attn: bool = False,
     ):
         super().__init__()
         self.tok_emb = nn.Embedding(vocab_size, d_model)
         self.pos_emb = nn.Embedding(max_seq_len, d_model)
         self.blocks = nn.ModuleList([
-            TransformerBlock(d_model, n_heads, dropout) for _ in range(n_layers)
+            TransformerBlock(d_model, n_heads, dropout, cross_attn=cross_attn) for _ in range(n_layers)
         ])
         self.ln_f = nn.LayerNorm(d_model)
         self.head = nn.Linear(d_model, vocab_size, bias=False)
 
         
 
-    def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        encoder_out: torch.Tensor = None,
+        chroma_emb: torch.Tensor = None,
+    ) -> torch.Tensor:
         """
         Args:
-            input_ids: (batch, seq_len) token IDs
+            input_ids:   (batch, seq_len) token IDs
+            encoder_out: (batch, T_enc, d_model) — encoder context for cross-attention (optional)
+            chroma_emb:  (batch, seq_len, d_model) — projected melody chroma to add at input (optional)
         Returns:
             logits: (batch, seq_len, vocab_size)
         """
@@ -50,12 +58,17 @@ class ChordTransformer(nn.Module):
 
         # now each token has its embedding info, position info
         x = self.tok_emb(input_ids) + self.pos_emb(pos)
+
+        # inject melody conditioning if provided
+        if chroma_emb is not None:
+            x = x + chroma_emb[:, :T, :]
+
         for block in self.blocks:
-            x = block(x)
+            x = block(x, encoder_out=encoder_out)
         # after each block it gets info about previous tokens and processed understanding
         x = self.ln_f(x)
         # compute the dot product of each ID against each token
-        logits = self.head(x) 
+        logits = self.head(x)
         return logits
         
 
