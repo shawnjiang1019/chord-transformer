@@ -1,6 +1,6 @@
 # Chord Transformer
 
-A melody-conditioned chord harmonizer built on a GPT-2 style decoder-only transformer. Given a melody and surrounding chord context, the model generates chord progressions that fit the melody and bridge naturally between the known chords.
+A melody-conditioned chord harmonizer built on a GPT-2 style decoder-encoder transformer. Given a melody and surrounding chord context, the model generates chord progressions that fit the melody and bridge naturally between the known chords.
 
 ## What it does
 
