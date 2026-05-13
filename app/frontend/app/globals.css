@@ -1,26 +1,77 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4f1ea;
+  --foreground: #0a0a0a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  /* Fonts — variables injected by next/font in layout.tsx */
+  --font-sans: var(--font-space-grotesk), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), monospace;
+
+  /* Design palette */
+  --color-paper:  #f4f1ea;
+  --color-ink:    #0a0a0a;
+  --color-dim:    #7a7a72;
+  --color-sand:   #ece8db;
+  --color-chalk:  #fafaf6;
+  --color-flame:  #ff3b00;
+  --color-denim:  #1e3a8a;
+  --color-dust:   #cdc8b8;
+  --color-amber:  #a86a1f;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+/* ── Custom border utilities (1.4px — not in Tailwind's default scale) ── */
+@layer utilities {
+  .border-design         { border:        1.4px solid #0a0a0a; }
+  .border-t-design       { border-top:    1.4px solid #0a0a0a; }
+  .border-b-design       { border-bottom: 1.4px solid #0a0a0a; }
+  .border-l-design       { border-left:   1.4px solid #0a0a0a; }
+  .border-r-design       { border-right:  1.4px solid #0a0a0a; }
+  .border-design-dashed  { border:        1.4px dashed #0a0a0a; }
+  .border-t-muted-dashed { border-top:    1.4px dashed #7a7a72; }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ── Range input: custom track + thumb ── */
+input[type=range] {
+  -webkit-appearance: none;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  height: 2px;
+  background: #0a0a0a;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #ff3b00;
+  border: 1.4px solid #0a0a0a;
+  margin-top: -7px;
+  cursor: pointer;
+}
+input[type=range]::-moz-range-track  { height: 2px; background: #0a0a0a; }
+input[type=range]::-moz-range-thumb  {
+  width: 14px;
+  height: 14px;
+  background: #ff3b00;
+  border: 1.4px solid #0a0a0a;
+  cursor: pointer;
+}
+
+select { cursor: pointer; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
 }
